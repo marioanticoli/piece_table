@@ -9,13 +9,14 @@ defmodule PieceTable do
   ## Usage
 
   ```elixir
-  table = PieceTable.new!("Hello, world!")
-  table = PieceTable.insert!(table, "you ", 7)
-  table = PieceTable.delete!(table, 10, 6)
-
-  final_text = PieceTable.get_text(table)
-  IO.puts(final_text)  # Output: "Hello, you!"
-
+  iex> table = PieceTable.new!("Hello, world!")
+  iex> table = PieceTable.insert!(table, "you ", 7)
+  iex> table = PieceTable.delete!(table, 10, 6)
+  iex> table = PieceTable.undo!(table)
+  iex> table = PieceTable.redo!(table)
+  iex> PieceTable.get_text!(table)
+  "Hello, you!"
+  ```
   """
 
   @type t :: %__MODULE__{
