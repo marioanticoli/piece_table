@@ -47,6 +47,7 @@ defmodule PieceTable do
   def new(text) when is_binary(text) do
     pt = %__MODULE__{
       original: text,
+      # For fast access I'll keep the string after all operations are applied
       result: text,
       edited: [{:keep, String.length(text)}],
       index: 0
@@ -153,6 +154,8 @@ defmodule PieceTable do
 
   def delete(%__MODULE__{} = table, position, length)
       when is_integer(position) and is_integer(length) and length > 0 do
+    # To allow reverting a change I'm saving the string instead of the length, so a remove becomes an insert on undo.
+    # length will be simply calculated from the length of the string
     text = String.slice(table.result, position, length)
     {:ok, update_piece_table(table, {:remove, text, position})}
   end
@@ -250,6 +253,7 @@ defmodule PieceTable do
   @spec undo(PieceTable.t()) ::
           {:ok, PieceTable.t()} | {:first, PieceTable.t()} | {:error, String.t()}
   def undo(%__MODULE__{index: index, edited: edited} = table) do
+    # Move the index to previous change
     prev_state_index = index + 1
 
     case Enum.at(edited, index) do
@@ -314,6 +318,7 @@ defmodule PieceTable do
   @spec redo(PieceTable.t()) ::
           {:ok, PieceTable.t()} | {:last, PieceTable.t()} | {:error, String.t()}
   def redo(%__MODULE__{} = table) do
+    # Move index to next change 
     next_state_index = table.index - 1
 
     case Enum.at(table.edited, next_state_index) do
@@ -361,6 +366,7 @@ defmodule PieceTable do
   defp update_piece_table(table, change) do
     attrs =
       Map.from_struct(table)
+      # Lists in Elixir are linked lists. For efficiency prepend to the list of changes
       |> update_in([:edited], &[change | &1])
       |> Map.put(:result, apply_change(table, change))
 
@@ -370,6 +376,7 @@ defmodule PieceTable do
   defp apply_change(%{result: str}, {:add, edit, pos}) do
     [String.slice(str, 0, pos), edit, String.slice(str, pos..-1)]
     |> Enum.reduce("", fn string, acc ->
+      # Joining strings in this way is more efficient as it doesn't make copies (unlike `<>`)
       IO.iodata_to_binary([acc, string])
     end)
   end
@@ -377,8 +384,10 @@ defmodule PieceTable do
   defp apply_change(%{result: str}, {:remove, edit, pos}) do
     start = pos + String.length(edit)
 
+    # Fixme: would be nice to find a better way...
     [String.slice(str, 0, pos), String.slice(str, start..-1)]
     |> Enum.reduce("", fn string, acc ->
+      # Joining strings in this way is more efficient as it doesn't make copies (unlike `<>`)
       IO.iodata_to_binary([acc, string])
     end)
   end
