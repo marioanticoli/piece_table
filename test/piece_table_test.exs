@@ -20,6 +20,7 @@ defmodule PieceTableTest do
       assert expected == PieceTable.new(nil)
       assert expected == PieceTable.new(1.3)
       assert expected == PieceTable.new(true)
+      assert expected == PieceTable.new(self())
     end
   end
 
@@ -33,7 +34,7 @@ defmodule PieceTableTest do
       assert expected == PieceTable.new!(str)
     end
 
-    test "raise an error" do
+    test "raise an error on wrong argument" do
       assert_raise(ArgumentError, fn -> PieceTable.new!(1) end)
     end
   end
