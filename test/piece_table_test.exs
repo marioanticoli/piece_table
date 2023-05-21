@@ -50,7 +50,7 @@ defmodule PieceTableTest do
       updated_attrs =
         Map.merge(attrs, %{
           result: "my super test",
-          index: 1,
+          index: 0,
           edited: [{:add, edit, pos}, {:keep, 7}]
         })
 
@@ -107,7 +107,7 @@ defmodule PieceTableTest do
       updated_attrs =
         Map.merge(attrs, %{
           result: "my super test",
-          index: 1,
+          index: 0,
           edited: [{:add, edit, pos}, {:keep, 7}]
         })
 
@@ -132,7 +132,7 @@ defmodule PieceTableTest do
       length = 3
 
       updated_attrs =
-        Map.merge(attrs, %{result: "test", index: 1, edited: [{:remove, "my ", pos}, {:keep, 7}]})
+        Map.merge(attrs, %{result: "test", index: 0, edited: [{:remove, "my ", pos}, {:keep, 7}]})
 
       expected = {:ok, make_piece_table(updated_attrs)}
 
@@ -175,7 +175,7 @@ defmodule PieceTableTest do
       length = 3
 
       updated_attrs =
-        Map.merge(attrs, %{result: "test", index: 1, edited: [{:remove, "my ", pos}, {:keep, 7}]})
+        Map.merge(attrs, %{result: "test", index: 0, edited: [{:remove, "my ", pos}, {:keep, 7}]})
 
       expected = make_piece_table(updated_attrs)
 
@@ -232,21 +232,162 @@ defmodule PieceTableTest do
 
   describe "undo/1" do
     test "undo changes" do
-      assert 1 == 0
+      str = "my test"
+      attrs = %{original: str, edited: [{:keep, String.length(str)}], result: str, index: 0}
+      table = make_piece_table(attrs)
+
+      pos = 0
+      length = 3
+
+      table = PieceTable.delete!(table, pos, length)
+
+      updated_attrs =
+        Map.merge(attrs, %{
+          result: "my test",
+          index: 1,
+          edited: [{:remove, "my ", pos}, {:keep, 7}]
+        })
+
+      expected = {:ok, make_piece_table(updated_attrs)}
+
+      assert expected == PieceTable.undo(table)
     end
 
-    test "doesn't do anything when already at first change" do
-      assert 1 == 0
+    test "returns :first atom when already at first change" do
+      str = "my test"
+      attrs = %{original: str, edited: [{:keep, String.length(str)}], result: str, index: 0}
+      table = make_piece_table(attrs)
+
+      pos = 0
+      length = 3
+
+      table = PieceTable.delete!(table, pos, length)
+
+      updated_attrs =
+        Map.merge(attrs, %{
+          result: "my test",
+          index: 1,
+          edited: [{:remove, "my ", pos}, {:keep, 7}]
+        })
+
+      expected = {:first, make_piece_table(updated_attrs)}
+      {:ok, table} = PieceTable.undo(table)
+
+      assert expected == PieceTable.undo(table)
+    end
+
+    test "returns error if argument not a PieceTable" do
+      assert {:error, "not a PieceTable struct"} == PieceTable.undo(false)
+    end
+  end
+
+  describe "undo!/1" do
+    test "un-does last change" do
+      str = "my test"
+      attrs = %{original: str, edited: [{:keep, String.length(str)}], result: str, index: 0}
+      table = make_piece_table(attrs)
+
+      pos = 0
+      length = 3
+
+      table = PieceTable.delete!(table, pos, length)
+
+      updated_attrs =
+        Map.merge(attrs, %{
+          result: "my test",
+          index: 1,
+          edited: [{:remove, "my ", pos}, {:keep, 7}]
+        })
+
+      expected = make_piece_table(updated_attrs)
+
+      assert expected == PieceTable.undo!(table)
+    end
+
+    test "raises when argument not a PieceTable" do
+      assert_raise(ArgumentError, fn -> PieceTable.undo!(12) end)
     end
   end
 
   describe "redo/1" do
     test "redo changes" do
-      assert 1 == 0
+      str = "my test"
+      attrs = %{original: str, edited: [{:keep, String.length(str)}], result: str, index: 0}
+      table = make_piece_table(attrs)
+
+      pos = 0
+      length = 3
+
+      table = PieceTable.delete!(table, pos, length)
+
+      updated_attrs =
+        Map.merge(attrs, %{
+          result: "test",
+          index: 0,
+          edited: [{:remove, "my ", pos}, {:keep, 7}]
+        })
+
+      expected = {:ok, make_piece_table(updated_attrs)}
+
+      {:ok, table} = PieceTable.undo(table)
+      assert expected == PieceTable.redo(table)
     end
 
-    test "doesn't do anything when already at last change" do
-      assert 1 == 0
+    test "returns atom :last when already at last change" do
+      str = "my test"
+      attrs = %{original: str, edited: [{:keep, String.length(str)}], result: str, index: 0}
+      table = make_piece_table(attrs)
+
+      pos = 0
+      length = 3
+
+      table = PieceTable.delete!(table, pos, length)
+
+      updated_attrs =
+        Map.merge(attrs, %{
+          result: "test",
+          index: 0,
+          edited: [{:remove, "my ", pos}, {:keep, 7}]
+        })
+
+      expected = {:last, make_piece_table(updated_attrs)}
+
+      {:ok, table} = PieceTable.undo(table)
+      {:ok, table} = PieceTable.redo(table)
+      assert expected == PieceTable.redo(table)
+    end
+
+    test "returns error when argument not a struct" do
+      assert {:error, "not a PieceTable struct"} == PieceTable.redo(false)
+    end
+  end
+
+  describe "redo!/1" do
+    test "redo changes" do
+      str = "my test"
+      attrs = %{original: str, edited: [{:keep, String.length(str)}], result: str, index: 0}
+      table = make_piece_table(attrs)
+
+      pos = 0
+      length = 3
+
+      table = PieceTable.delete!(table, pos, length)
+
+      updated_attrs =
+        Map.merge(attrs, %{
+          result: "test",
+          index: 0,
+          edited: [{:remove, "my ", pos}, {:keep, 7}]
+        })
+
+      expected = make_piece_table(updated_attrs)
+
+      {:ok, table} = PieceTable.undo(table)
+      assert expected == PieceTable.redo!(table)
+    end
+
+    test "returns error when argument not a struct" do
+      assert_raise(ArgumentError, fn -> PieceTable.redo!(false) end)
     end
   end
 

@@ -92,7 +92,7 @@ defmodule PieceTable do
 
       iex> {:ok, table} = PieceTable.new("Initial content")
       iex> PieceTable.insert(table, ", before", 15)
-      {:ok, %PieceTable{original: "Initial content", index: 1, result: "Initial content, before", edited: [{:add, ", before", 15}, {:keep, 15}]}}
+      {:ok, %PieceTable{original: "Initial content", index: 0, result: "Initial content, before", edited: [{:add, ", before", 15}, {:keep, 15}]}}
   """
   @spec insert(PieceTable.t(), String.t(), integer()) ::
           {:ok, PieceTable.t()} | {:error, String.t()}
@@ -122,7 +122,7 @@ defmodule PieceTable do
 
       iex> table = PieceTable.new!("Initial content")
       iex> PieceTable.insert!(table, ", before", 15)
-      %PieceTable{original: "Initial content", result: "Initial content, before", index: 1, edited: [{:add, ", before", 15}, {:keep, 15}]}
+      %PieceTable{original: "Initial content", result: "Initial content, before", index: 0, edited: [{:add, ", before", 15}, {:keep, 15}]}
   """
   @spec insert!(PieceTable.t(), String.t(), integer()) :: PieceTable.t()
   def insert!(table, text, position), do: table |> insert(text, position) |> handle_result()
@@ -145,7 +145,7 @@ defmodule PieceTable do
 
       iex> {:ok, table} = PieceTable.new("Initial content")
       iex> PieceTable.delete(table, 4, 3)
-      {:ok, %PieceTable{original: "Initial content", result: "Init content", index: 1, edited: [{:remove, "ial", 4}, {:keep, 15}]}}
+      {:ok, %PieceTable{original: "Initial content", result: "Init content", index: 0, edited: [{:remove, "ial", 4}, {:keep, 15}]}}
   """
   @spec delete(PieceTable.t(), integer(), integer()) ::
           {:ok, PieceTable.t()} | {:error, String.t()}
@@ -176,7 +176,7 @@ defmodule PieceTable do
 
       iex> {:ok, table} = PieceTable.new("Initial content")
       iex> PieceTable.delete!(table, 4, 3)
-      %PieceTable{original: "Initial content", result: "Init content", index: 1, edited: [{:remove, "ial", 4}, {:keep, 15}]}
+      %PieceTable{original: "Initial content", result: "Init content", index: 0, edited: [{:remove, "ial", 4}, {:keep, 15}]}
   """
   @spec delete!(PieceTable.t(), integer(), integer()) :: PieceTable.t()
   def delete!(table, position, length), do: table |> delete(position, length) |> handle_result()
@@ -226,44 +226,137 @@ defmodule PieceTable do
   @spec get_text!(PieceTable.t()) :: String.t()
   def get_text!(table), do: table |> get_text() |> handle_result()
 
-  @spec undo(PieceTable.t()) :: PieceTable.t()
-  def undo(table) do
-    prev_state_index = table.index + 1
+  @doc """
+  Undo the latest change applied to the string.
 
-    case Enum.at(table.edited, table.index) do
+  ## Parameters
+
+  - `table` (PieceTable.t()): The PieceTable from which the text will be retrieved.
+
+  ## Returns
+
+  - `{:ok, PieceTable.t()}`
+  - `{:first, PieceTable.t()}`
+  - `{:error, "not a PieceTable struct"}`
+
+
+  ## Examples
+
+      iex> {:ok, table} = PieceTable.new("Initial content")
+      iex> table = PieceTable.delete!(table, 4, 3)
+      iex> PieceTable.undo(table)
+      {:ok, %PieceTable{original: "Initial content", result: "Initial content", edited: [{:remove, "ial", 4}, {:keep, 15}], index: 1}}
+  """
+  @spec undo(PieceTable.t()) ::
+          {:ok, PieceTable.t()} | {:first, PieceTable.t()} | {:error, String.t()}
+  def undo(%__MODULE__{index: index, edited: edited} = table) do
+    prev_state_index = index + 1
+
+    case Enum.at(edited, index) do
       {:add, edit, pos} ->
         result = apply_change(table, {:remove, edit, pos})
-        struct(table, %{result: result, index: prev_state_index})
+        {:ok, struct(table, %{result: result, index: prev_state_index})}
 
       {:remove, edit, pos} ->
         result = apply_change(table, {:add, edit, pos})
-        struct(table, %{result: result, index: prev_state_index})
+        {:ok, struct(table, %{result: result, index: prev_state_index})}
 
       _ ->
-        table
+        {:first, table}
     end
   end
 
-  @spec redo(PieceTable.t()) :: PieceTable.t()
-  def redo(table) do
+  def undo(_), do: {:error, "not a PieceTable struct"}
+
+  @doc """
+  Undo the latest change applied to the string.
+
+  ## Parameters
+
+  - `table` (PieceTable.t()): The PieceTable from which the text will be retrieved.
+
+  ## Returns
+
+  - `PieceTable.t()`
+
+
+  ## Examples
+
+      iex> {:ok, table} = PieceTable.new("Initial content")
+      iex> table = PieceTable.delete!(table, 4, 3)
+      iex> PieceTable.undo!(table)
+      %PieceTable{original: "Initial content", result: "Initial content", edited: [{:remove, "ial", 4}, {:keep, 15}], index: 1}
+  """
+  @spec undo!(PieceTable.t()) :: PieceTable.t()
+  def undo!(table), do: table |> undo() |> handle_result()
+
+  @doc """
+  Redo the next change previously undone to the string.
+
+  ## Parameters
+
+  - `table` (PieceTable.t()): The PieceTable from which the text will be retrieved.
+
+  ## Returns
+
+  - `{:ok, PieceTable.t()}`
+  - `{:last, PieceTable.t()}`
+  - `{:error, "not a PieceTable struct"}`
+
+  ## Examples
+
+      iex> {:ok, table} = PieceTable.new("Initial content")
+      iex> table = PieceTable.delete!(table, 4, 3)
+      iex> {:ok, table} = PieceTable.undo(table)
+      iex> PieceTable.redo(table)
+      {:ok, %PieceTable{original: "Initial content", result: "Init content", edited: [{:remove, "ial", 4}, {:keep, 15}], index: 0}}
+  """
+  @spec redo(PieceTable.t()) ::
+          {:ok, PieceTable.t()} | {:last, PieceTable.t()} | {:error, String.t()}
+  def redo(%__MODULE__{} = table) do
     next_state_index = table.index - 1
 
-    case Enum.at(table.edited, next_state_index) |> IO.inspect() do
+    case Enum.at(table.edited, next_state_index) do
       {:add, _, _} = change ->
-        result = apply_change(table, change) |> IO.inspect
-        struct(table, %{result: result, index: next_state_index})
+        result = apply_change(table, change)
+        {:ok, struct(table, %{result: result, index: next_state_index})}
 
       {:remove, _, _} = change ->
         result = apply_change(table, change)
-        struct(table, %{result: result, index: next_state_index})
+        {:ok, struct(table, %{result: result, index: next_state_index})}
 
       _ ->
-        table
+        {:last, table}
     end
   end
 
+  def redo(_), do: {:error, "not a PieceTable struct"}
+
+  @doc """
+  Redo the next change previously undone to the string.
+
+  ## Parameters
+
+  - `table` (PieceTable.t()): The PieceTable from which the text will be retrieved.
+
+  ## Returns
+
+  - `PieceTable.t()`
+
+  ## Examples
+
+      iex> {:ok, table} = PieceTable.new("Initial content")
+      iex> table = PieceTable.delete!(table, 4, 3)
+      iex> {:ok, table} = PieceTable.undo(table)
+      iex> PieceTable.redo!(table)
+      %PieceTable{original: "Initial content", result: "Init content", edited: [{:remove, "ial", 4}, {:keep, 15}], index: 0}
+  """
+  @spec redo!(PieceTable.t()) :: PieceTable.t()
+  def redo!(table), do: table |> redo() |> handle_result()
+
   defp handle_result({:ok, result}), do: result
   defp handle_result({:error, msg}), do: raise(ArgumentError, msg)
+  defp handle_result({_, result}), do: result
 
   defp update_piece_table(table, change) do
     attrs =
