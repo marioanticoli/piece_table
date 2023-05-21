@@ -48,8 +48,11 @@ defmodule PieceTableTest do
       pos = 3
 
       updated_attrs =
-        update_in(attrs, [:edited], &(&1 ++ [{:add, pos, edit}]))
-        |> Map.put(:result, "my super test")
+        Map.merge(attrs, %{
+          result: "my super test",
+          index: 1,
+          edited: [{:add, edit, pos}, {:keep, 7}]
+        })
 
       expected = {:ok, make_piece_table(updated_attrs)}
 
@@ -102,8 +105,11 @@ defmodule PieceTableTest do
       pos = 3
 
       updated_attrs =
-        update_in(attrs, [:edited], &(&1 ++ [{:add, pos, edit}]))
-        |> Map.put(:result, "my super test")
+        Map.merge(attrs, %{
+          result: "my super test",
+          index: 1,
+          edited: [{:add, edit, pos}, {:keep, 7}]
+        })
 
       expected = make_piece_table(updated_attrs)
 
@@ -119,12 +125,15 @@ defmodule PieceTableTest do
 
   describe "delete/3" do
     test "updates the list of operations" do
-      attrs = %{original: "my test", edited: [{:keep, 7}]}
+      attrs = %{original: "my test", result: "my test", edited: [{:keep, 7}]}
       table = make_piece_table(attrs)
 
       pos = 0
       length = 3
-      updated_attrs = update_in(attrs, [:edited], &(&1 ++ [{:remove, pos, length}]))
+
+      updated_attrs =
+        Map.merge(attrs, %{result: "test", index: 1, edited: [{:remove, "my ", pos}, {:keep, 7}]})
+
       expected = {:ok, make_piece_table(updated_attrs)}
 
       assert expected == PieceTable.delete(table, pos, length)
@@ -159,12 +168,15 @@ defmodule PieceTableTest do
 
   describe "delete!/3" do
     test "updates the list of operations" do
-      attrs = %{original: "my test", edited: [{:keep, 7}]}
+      attrs = %{original: "my test", edited: [{:keep, 7}], result: "my test"}
       table = make_piece_table(attrs)
 
       pos = 0
       length = 3
-      updated_attrs = update_in(attrs, [:edited], &(&1 ++ [{:remove, pos, length}]))
+
+      updated_attrs =
+        Map.merge(attrs, %{result: "test", index: 1, edited: [{:remove, "my ", pos}, {:keep, 7}]})
+
       expected = make_piece_table(updated_attrs)
 
       assert expected == PieceTable.delete!(table, pos, length)
@@ -215,6 +227,26 @@ defmodule PieceTableTest do
       not_a_table = %{original: str, result: str, edited: [{:keep, String.length(str)}]}
 
       assert_raise(ArgumentError, fn -> PieceTable.get_text!(not_a_table) end)
+    end
+  end
+
+  describe "undo/1" do
+    test "undo changes" do
+      assert 1 == 0
+    end
+
+    test "doesn't do anything when already at first change" do
+      assert 1 == 0
+    end
+  end
+
+  describe "redo/1" do
+    test "redo changes" do
+      assert 1 == 0
+    end
+
+    test "doesn't do anything when already at last change" do
+      assert 1 == 0
     end
   end
 
