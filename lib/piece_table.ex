@@ -48,7 +48,9 @@ defmodule PieceTable do
   def new(text) when is_binary(text) do
     pt = %__MODULE__{
       original: text,
-      # For fast access I'll keep the string after all operations are applied
+      # For fast access I'll keep the resulting string after all operations are applied
+      # it's important to keep this always up to date otherwise the whole implementation 
+      # will break
       result: text,
       edited: [{:keep, String.length(text)}],
       index: 0
@@ -360,9 +362,8 @@ defmodule PieceTable do
   @spec redo!(PieceTable.t()) :: PieceTable.t()
   def redo!(table), do: table |> redo() |> handle_result()
 
-  defp handle_result({:ok, result}), do: result
+  defp handle_result({status, result}) when status in [:ok, :last, :first], do: result
   defp handle_result({:error, msg}), do: raise(ArgumentError, msg)
-  defp handle_result({_, result}), do: result
 
   defp update_piece_table(table, change) do
     attrs =
