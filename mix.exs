@@ -40,8 +40,7 @@ defmodule PieceTable.MixProject do
   defp package() do
     [
       name: "piece_table",
-      files:
-        ~w(lib priv .formatter.exs mix.exs README* readme* LICENSE* license* CHANGELOG* changelog*),
+      files: ~w(lib priv .formatter.exs mix.exs README* LICENSE* CHANGELOG*),
       licenses: ["MIT License"],
       links: %{"Github" => "https://github.com/marioanticoli/piece_table"}
     ]
