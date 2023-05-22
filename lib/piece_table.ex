@@ -22,11 +22,11 @@ defmodule PieceTable do
   @type t :: %__MODULE__{
           original: String.t(),
           result: String.t(),
-          edited: [tuple()],
-          index: integer()
+          applied: [tuple()],
+          to_apply: [tuple()]
         }
 
-  defstruct original: "", result: "", edited: [], index: 0
+  defstruct original: "", result: "", applied: [], to_apply: []
 
   @doc """
   Creates a new PieceTable struct. This is intended the only method to build it.
@@ -41,7 +41,7 @@ defmodule PieceTable do
   ## Examples
 
       iex> PieceTable.new("test")
-      {:ok, %PieceTable{original: "test", result: "test", edited: [{:keep, 4}]}}
+      {:ok, %PieceTable{original: "test", result: "test", applied: [{:keep, 4}]}}
 
   """
   @spec new(String.t()) :: {:ok, PieceTable.t()} | {:error, String.t()}
@@ -52,8 +52,8 @@ defmodule PieceTable do
       # it's important to keep this always up to date otherwise the whole implementation 
       # will break
       result: text,
-      edited: [{:keep, String.length(text)}],
-      index: 0
+      applied: [{:keep, String.length(text)}],
+      to_apply: []
     }
 
     {:ok, pt}
@@ -72,7 +72,7 @@ defmodule PieceTable do
   ## Examples
 
       iex> PieceTable.new!("test")
-      %PieceTable{original: "test", result: "test", edited: [{:keep, 4}]}
+      %PieceTable{original: "test", result: "test", applied: [{:keep, 4}]}
 
   """
   @spec new!(String.t()) :: PieceTable.t()
@@ -96,7 +96,7 @@ defmodule PieceTable do
 
       iex> {:ok, table} = PieceTable.new("Initial content")
       iex> PieceTable.insert(table, ", before", 15)
-      {:ok, %PieceTable{original: "Initial content", index: 0, result: "Initial content, before", edited: [{:add, ", before", 15}, {:keep, 15}]}}
+      {:ok, %PieceTable{original: "Initial content", index: 0, result: "Initial content, before", applied: [{:add, ", before", 15}, {:keep, 15}]}}
   """
   @spec insert(PieceTable.t(), String.t(), integer()) ::
           {:ok, PieceTable.t()} | {:error, String.t()}
@@ -126,7 +126,7 @@ defmodule PieceTable do
 
       iex> table = PieceTable.new!("Initial content")
       iex> PieceTable.insert!(table, ", before", 15)
-      %PieceTable{original: "Initial content", result: "Initial content, before", index: 0, edited: [{:add, ", before", 15}, {:keep, 15}]}
+      %PieceTable{original: "Initial content", result: "Initial content, before", index: 0, applied: [{:add, ", before", 15}, {:keep, 15}]}
   """
   @spec insert!(PieceTable.t(), String.t(), integer()) :: PieceTable.t()
   def insert!(table, text, position), do: table |> insert(text, position) |> handle_result()
@@ -149,7 +149,7 @@ defmodule PieceTable do
 
       iex> {:ok, table} = PieceTable.new("Initial content")
       iex> PieceTable.delete(table, 4, 3)
-      {:ok, %PieceTable{original: "Initial content", result: "Init content", index: 0, edited: [{:remove, "ial", 4}, {:keep, 15}]}}
+      {:ok, %PieceTable{original: "Initial content", result: "Init content", index: 0, applied: [{:remove, "ial", 4}, {:keep, 15}]}}
   """
   @spec delete(PieceTable.t(), integer(), integer()) ::
           {:ok, PieceTable.t()} | {:error, String.t()}
@@ -182,7 +182,7 @@ defmodule PieceTable do
 
       iex> {:ok, table} = PieceTable.new("Initial content")
       iex> PieceTable.delete!(table, 4, 3)
-      %PieceTable{original: "Initial content", result: "Init content", index: 0, edited: [{:remove, "ial", 4}, {:keep, 15}]}
+      %PieceTable{original: "Initial content", result: "Init content", index: 0, applied: [{:remove, "ial", 4}, {:keep, 15}]}
   """
   @spec delete!(PieceTable.t(), integer(), integer()) :: PieceTable.t()
   def delete!(table, position, length), do: table |> delete(position, length) |> handle_result()
@@ -251,15 +251,16 @@ defmodule PieceTable do
       iex> {:ok, table} = PieceTable.new("Initial content")
       iex> table = PieceTable.delete!(table, 4, 3)
       iex> PieceTable.undo(table)
-      {:ok, %PieceTable{original: "Initial content", result: "Initial content", edited: [{:remove, "ial", 4}, {:keep, 15}], index: 1}}
+      {:ok, %PieceTable{original: "Initial content", result: "Initial content", applied: [{:remove, "ial", 4}, {:keep, 15}], index: 1}}
   """
   @spec undo(PieceTable.t()) ::
           {:ok, PieceTable.t()} | {:first, PieceTable.t()} | {:error, String.t()}
-  def undo(%__MODULE__{index: index, edited: edited} = table) do
+  def undo(%__MODULE__{to_apply: to_apply, applied: applied} = table) do
     # Move the index to previous change
-    prev_state_index = index + 1
+    {change, applied} = List.pop_at(applied, 0)
+    to_apply = [change | to_apply]
 
-    case Enum.at(edited, index) do
+    case change do
       {:add, edit, pos} ->
         result = apply_change(table, {:remove, edit, pos})
         {:ok, struct(table, %{result: result, index: prev_state_index})}
@@ -292,7 +293,7 @@ defmodule PieceTable do
       iex> {:ok, table} = PieceTable.new("Initial content")
       iex> table = PieceTable.delete!(table, 4, 3)
       iex> PieceTable.undo!(table)
-      %PieceTable{original: "Initial content", result: "Initial content", edited: [{:remove, "ial", 4}, {:keep, 15}], index: 1}
+      %PieceTable{original: "Initial content", result: "Initial content", applied: [{:remove, "ial", 4}, {:keep, 15}], index: 1}
   """
   @spec undo!(PieceTable.t()) :: PieceTable.t()
   def undo!(table), do: table |> undo() |> handle_result()
@@ -316,7 +317,7 @@ defmodule PieceTable do
       iex> table = PieceTable.delete!(table, 4, 3)
       iex> {:ok, table} = PieceTable.undo(table)
       iex> PieceTable.redo(table)
-      {:ok, %PieceTable{original: "Initial content", result: "Init content", edited: [{:remove, "ial", 4}, {:keep, 15}], index: 0}}
+      {:ok, %PieceTable{original: "Initial content", result: "Init content", applied: [{:remove, "ial", 4}, {:keep, 15}], index: 0}}
   """
   @spec redo(PieceTable.t()) ::
           {:ok, PieceTable.t()} | {:last, PieceTable.t()} | {:error, String.t()}
@@ -324,7 +325,7 @@ defmodule PieceTable do
     # Move index to next change 
     next_state_index = table.index - 1
 
-    case Enum.at(table.edited, next_state_index) do
+    case Enum.at(table.applied, next_state_index) do
       {:add, _, _} = change ->
         result = apply_change(table, change)
         {:ok, struct(table, %{result: result, index: next_state_index})}
@@ -357,7 +358,7 @@ defmodule PieceTable do
       iex> table = PieceTable.delete!(table, 4, 3)
       iex> {:ok, table} = PieceTable.undo(table)
       iex> PieceTable.redo!(table)
-      %PieceTable{original: "Initial content", result: "Init content", edited: [{:remove, "ial", 4}, {:keep, 15}], index: 0}
+      %PieceTable{original: "Initial content", result: "Init content", applied: [{:remove, "ial", 4}, {:keep, 15}], index: 0}
   """
   @spec redo!(PieceTable.t()) :: PieceTable.t()
   def redo!(table), do: table |> redo() |> handle_result()
@@ -369,7 +370,7 @@ defmodule PieceTable do
     attrs =
       Map.from_struct(table)
       # Lists in Elixir are linked lists. For efficiency prepend to the list of changes
-      |> update_in([:edited], &[change | &1])
+      |> update_in([:applied], &[change | &1])
       |> Map.put(:result, apply_change(table, change))
 
     struct(table, attrs)
