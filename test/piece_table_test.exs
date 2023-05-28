@@ -5,10 +5,7 @@ defmodule PieceTableTest do
   describe "new/1" do
     test "with string returns ok" do
       str = "my test"
-
-      expected =
-        {:ok,
-         make_piece_table(%{original: str, result: str, edited: [{:keep, String.length(str)}]})}
+      expected = {:ok, make_piece_table(%{original: str, result: str})}
 
       assert expected == PieceTable.new(str)
     end
@@ -27,9 +24,7 @@ defmodule PieceTableTest do
   describe "new!/1" do
     test "return a piece table struct" do
       str = "my test"
-
-      expected =
-        make_piece_table(%{original: str, result: str, edited: [{:keep, String.length(str)}]})
+      expected = make_piece_table(%{original: str, result: str})
 
       assert expected == PieceTable.new!(str)
     end
@@ -42,7 +37,7 @@ defmodule PieceTableTest do
   describe "insert/3" do
     test "updates the list of operations" do
       str = "my test"
-      attrs = %{original: str, edited: [{:keep, String.length(str)}], result: str}
+      attrs = %{original: str, result: str}
       table = make_piece_table(attrs)
 
       edit = "super "
@@ -51,8 +46,7 @@ defmodule PieceTableTest do
       updated_attrs =
         Map.merge(attrs, %{
           result: "my super test",
-          index: 0,
-          edited: [{:add, edit, pos}, {:keep, 7}]
+          applied: [{:add, edit, pos}]
         })
 
       expected = {:ok, make_piece_table(updated_attrs)}
@@ -61,7 +55,7 @@ defmodule PieceTableTest do
     end
 
     test "does nothing on empty string" do
-      table = make_piece_table(%{original: "my test", edited: [{:keep, 7}]})
+      table = make_piece_table(%{original: "my test"})
       pos = 3
       expected = {:ok, table}
 
@@ -69,26 +63,23 @@ defmodule PieceTableTest do
     end
 
     test "returns error if table is not a PieceTable" do
-      attrs = %{original: "my test", edited: [{:keep, 7}]}
-
+      attrs = %{original: "my test"}
       expected = {:error, "invalid arguments"}
 
       assert expected == PieceTable.insert(attrs, "anything", 3)
     end
 
     test "returns error if edit is not a string" do
-      attrs = %{original: "my test", edited: [{:keep, 7}]}
+      attrs = %{original: "my test"}
       table = make_piece_table(attrs)
-
       expected = {:error, "invalid arguments"}
 
       assert expected == PieceTable.insert(table, false, 3)
     end
 
     test "returns error if position is not a positive integer" do
-      attrs = %{original: "my test", edited: [{:keep, 7}]}
+      attrs = %{original: "my test"}
       table = make_piece_table(attrs)
-
       expected = {:error, "invalid arguments"}
 
       assert expected == PieceTable.insert(table, "other ", -1)
@@ -99,7 +90,7 @@ defmodule PieceTableTest do
   describe "insert!/3" do
     test "updates the list of operations" do
       str = "my test"
-      attrs = %{original: str, edited: [{:keep, String.length(str)}], result: str}
+      attrs = %{original: str, result: str}
       table = make_piece_table(attrs)
 
       edit = "super "
@@ -108,8 +99,7 @@ defmodule PieceTableTest do
       updated_attrs =
         Map.merge(attrs, %{
           result: "my super test",
-          index: 0,
-          edited: [{:add, edit, pos}, {:keep, 7}]
+          applied: [{:add, edit, pos}]
         })
 
       expected = make_piece_table(updated_attrs)
@@ -118,7 +108,7 @@ defmodule PieceTableTest do
     end
 
     test "raises if invalid arguments" do
-      attrs = %{original: "my test", edited: [{:keep, 7}]}
+      attrs = %{original: "my test"}
 
       assert_raise(ArgumentError, fn -> PieceTable.insert!(attrs, "anything", 3) end)
     end
@@ -126,14 +116,13 @@ defmodule PieceTableTest do
 
   describe "delete/3" do
     test "updates the list of operations" do
-      attrs = %{original: "my test", result: "my test", edited: [{:keep, 7}]}
+      attrs = %{original: "my test", result: "my test", applied: []}
       table = make_piece_table(attrs)
 
       pos = 0
       length = 3
 
-      updated_attrs =
-        Map.merge(attrs, %{result: "test", index: 0, edited: [{:remove, "my ", pos}, {:keep, 7}]})
+      updated_attrs = Map.merge(attrs, %{result: "test", applied: [{:remove, "my ", pos}]})
 
       expected = {:ok, make_piece_table(updated_attrs)}
 
@@ -141,25 +130,23 @@ defmodule PieceTableTest do
     end
 
     test "does nothing on 0 length" do
-      table = make_piece_table(%{original: "my test", edited: [{:keep, 7}]})
+      table = make_piece_table(%{original: "my test", applied: []})
       expected = {:ok, table}
 
       assert expected == PieceTable.delete(table, 3, 0)
     end
 
     test "returns error if edit is not a string" do
-      attrs = %{original: "my test", edited: [{:keep, 7}]}
+      attrs = %{original: "my test"}
       table = make_piece_table(attrs)
-
       expected = {:error, "invalid arguments"}
 
       assert expected == PieceTable.delete(table, false, 3)
     end
 
     test "returns error if position is not a positive integer" do
-      attrs = %{original: "my test", edited: [{:keep, 7}]}
+      attrs = %{original: "my test"}
       table = make_piece_table(attrs)
-
       expected = {:error, "invalid arguments"}
 
       assert expected == PieceTable.delete(table, "other ", -1)
@@ -169,22 +156,18 @@ defmodule PieceTableTest do
 
   describe "delete!/3" do
     test "updates the list of operations" do
-      attrs = %{original: "my test", edited: [{:keep, 7}], result: "my test"}
+      attrs = %{original: "my test", result: "my test"}
       table = make_piece_table(attrs)
-
       pos = 0
       length = 3
-
-      updated_attrs =
-        Map.merge(attrs, %{result: "test", index: 0, edited: [{:remove, "my ", pos}, {:keep, 7}]})
-
+      updated_attrs = Map.merge(attrs, %{result: "test", applied: [{:remove, "my ", pos}]})
       expected = make_piece_table(updated_attrs)
 
       assert expected == PieceTable.delete!(table, pos, length)
     end
 
     test "raises if invalid arguments" do
-      attrs = %{original: "my test", edited: [{:keep, 7}]}
+      attrs = %{original: "my test"}
 
       assert_raise(ArgumentError, fn -> PieceTable.delete!(attrs, false, 3) end)
     end
@@ -193,10 +176,7 @@ defmodule PieceTableTest do
   describe "get_text/1" do
     test "it returns the edited text" do
       str = "my test"
-
-      table =
-        make_piece_table(%{original: str, result: str, edited: [{:keep, String.length(str)}]})
-
+      table = make_piece_table(%{original: str, result: str})
       expected = {:ok, "my test"}
 
       assert expected == PieceTable.get_text(table)
@@ -204,7 +184,7 @@ defmodule PieceTableTest do
 
     test "it returns an error when not a piece table" do
       str = "my test"
-      not_a_table = %{original: str, result: str, edited: [{:keep, String.length(str)}]}
+      not_a_table = %{original: str, result: str, applied: []}
       expected = {:error, "not a PieceTable struct"}
 
       assert expected == PieceTable.get_text(not_a_table)
@@ -214,10 +194,7 @@ defmodule PieceTableTest do
   describe "get_text!/1" do
     test "it returns the edited text" do
       str = "my test"
-
-      table =
-        make_piece_table(%{original: str, result: str, edited: [{:keep, String.length(str)}]})
-
+      table = make_piece_table(%{original: str, result: str})
       expected = "my test"
 
       assert expected == PieceTable.get_text!(table)
@@ -225,7 +202,7 @@ defmodule PieceTableTest do
 
     test "it raises when not a piece table" do
       str = "my test"
-      not_a_table = %{original: str, result: str, edited: [{:keep, String.length(str)}]}
+      not_a_table = %{original: str, result: str}
 
       assert_raise(ArgumentError, fn -> PieceTable.get_text!(not_a_table) end)
     end
@@ -234,19 +211,16 @@ defmodule PieceTableTest do
   describe "undo/1" do
     test "undo changes" do
       str = "my test"
-      attrs = %{original: str, edited: [{:keep, String.length(str)}], result: str, index: 0}
+      attrs = %{original: str, result: str}
       table = make_piece_table(attrs)
-
       pos = 0
       length = 3
-
       table = PieceTable.delete!(table, pos, length)
 
       updated_attrs =
         Map.merge(attrs, %{
           result: "my test",
-          index: 1,
-          edited: [{:remove, "my ", pos}, {:keep, 7}]
+          to_apply: [{:remove, "my ", pos}]
         })
 
       expected = {:ok, make_piece_table(updated_attrs)}
@@ -254,25 +228,22 @@ defmodule PieceTableTest do
       assert expected == PieceTable.undo(table)
     end
 
-    test "returns :first atom when already at first change" do
+    test "returns tuple {:first, original_table} when already at the first change" do
       str = "my test"
-      attrs = %{original: str, edited: [{:keep, String.length(str)}], result: str, index: 0}
+      attrs = %{original: str, result: str}
       table = make_piece_table(attrs)
-
       pos = 0
       length = 3
-
       table = PieceTable.delete!(table, pos, length)
 
       updated_attrs =
         Map.merge(attrs, %{
           result: "my test",
-          index: 1,
-          edited: [{:remove, "my ", pos}, {:keep, 7}]
+          to_apply: [{:remove, "my ", pos}],
+          applied: []
         })
 
-      expected = {:first, make_piece_table(updated_attrs)}
-      {:ok, table} = PieceTable.undo(table)
+      expected = {:ok, make_piece_table(updated_attrs)}
 
       assert expected == PieceTable.undo(table)
     end
@@ -285,19 +256,16 @@ defmodule PieceTableTest do
   describe "undo!/1" do
     test "un-does last change" do
       str = "my test"
-      attrs = %{original: str, edited: [{:keep, String.length(str)}], result: str, index: 0}
+      attrs = %{original: str, result: str}
       table = make_piece_table(attrs)
-
       pos = 0
       length = 3
-
       table = PieceTable.delete!(table, pos, length)
 
       updated_attrs =
         Map.merge(attrs, %{
           result: "my test",
-          index: 1,
-          edited: [{:remove, "my ", pos}, {:keep, 7}]
+          to_apply: [{:remove, "my ", pos}]
         })
 
       expected = make_piece_table(updated_attrs)
@@ -313,19 +281,16 @@ defmodule PieceTableTest do
   describe "redo/1" do
     test "redo changes" do
       str = "my test"
-      attrs = %{original: str, edited: [{:keep, String.length(str)}], result: str, index: 0}
+      attrs = %{original: str, result: str}
       table = make_piece_table(attrs)
-
       pos = 0
       length = 3
-
       table = PieceTable.delete!(table, pos, length)
 
       updated_attrs =
         Map.merge(attrs, %{
           result: "test",
-          index: 0,
-          edited: [{:remove, "my ", pos}, {:keep, 7}]
+          applied: [{:remove, "my ", pos}]
         })
 
       expected = {:ok, make_piece_table(updated_attrs)}
@@ -334,21 +299,18 @@ defmodule PieceTableTest do
       assert expected == PieceTable.redo(table)
     end
 
-    test "returns atom :last when already at last change" do
+    test "returns tuple {:last, table} when already at last change" do
       str = "my test"
-      attrs = %{original: str, edited: [{:keep, String.length(str)}], result: str, index: 0}
+      attrs = %{original: str, result: str}
       table = make_piece_table(attrs)
-
       pos = 0
       length = 3
-
       table = PieceTable.delete!(table, pos, length)
 
       updated_attrs =
         Map.merge(attrs, %{
           result: "test",
-          index: 0,
-          edited: [{:remove, "my ", pos}, {:keep, 7}]
+          applied: [{:remove, "my ", pos}]
         })
 
       expected = {:last, make_piece_table(updated_attrs)}
@@ -366,19 +328,16 @@ defmodule PieceTableTest do
   describe "redo!/1" do
     test "redo changes" do
       str = "my test"
-      attrs = %{original: str, edited: [{:keep, String.length(str)}], result: str, index: 0}
+      attrs = %{original: str, result: str}
       table = make_piece_table(attrs)
-
       pos = 0
       length = 3
-
       table = PieceTable.delete!(table, pos, length)
 
       updated_attrs =
         Map.merge(attrs, %{
           result: "test",
-          index: 0,
-          edited: [{:remove, "my ", pos}, {:keep, 7}]
+          applied: [{:remove, "my ", pos}]
         })
 
       expected = make_piece_table(updated_attrs)
