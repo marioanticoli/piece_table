@@ -4,7 +4,7 @@ defmodule PieceTable.MixProject do
   def project do
     [
       app: :piece_table,
-      version: "0.1.0",
+      version: "0.1.1",
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -42,7 +42,7 @@ defmodule PieceTable.MixProject do
     [
       name: "piece_table",
       files: ~w(lib priv .formatter.exs mix.exs README* LICENSE* CHANGELOG*),
-      licenses: ["MIT License"],
+      licenses: ["MIT"],
       links: %{"Github" => "https://github.com/marioanticoli/piece_table"}
     ]
   end
