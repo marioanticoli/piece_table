@@ -46,7 +46,7 @@ defmodule PieceTableTest do
       updated_attrs =
         Map.merge(attrs, %{
           result: "my super test",
-          applied: [{:add, edit, pos}]
+          applied: [%PieceTable.Change{change: :ins, text: "super ", position: 3}]
         })
 
       expected = {:ok, make_piece_table(updated_attrs)}
@@ -99,7 +99,7 @@ defmodule PieceTableTest do
       updated_attrs =
         Map.merge(attrs, %{
           result: "my super test",
-          applied: [{:add, edit, pos}]
+          applied: [%PieceTable.Change{change: :ins, text: "super ", position: 3}]
         })
 
       expected = make_piece_table(updated_attrs)
@@ -122,7 +122,11 @@ defmodule PieceTableTest do
       pos = 0
       length = 3
 
-      updated_attrs = Map.merge(attrs, %{result: "test", applied: [{:remove, "my ", pos}]})
+      updated_attrs =
+        Map.merge(attrs, %{
+          result: "test",
+          applied: [%PieceTable.Change{change: :del, text: "my ", position: 0}]
+        })
 
       expected = {:ok, make_piece_table(updated_attrs)}
 
@@ -160,7 +164,13 @@ defmodule PieceTableTest do
       table = make_piece_table(attrs)
       pos = 0
       length = 3
-      updated_attrs = Map.merge(attrs, %{result: "test", applied: [{:remove, "my ", pos}]})
+
+      updated_attrs =
+        Map.merge(attrs, %{
+          result: "test",
+          applied: [%PieceTable.Change{change: :del, text: "my ", position: 0}]
+        })
+
       expected = make_piece_table(updated_attrs)
 
       assert expected == PieceTable.delete!(table, pos, length)
@@ -220,7 +230,7 @@ defmodule PieceTableTest do
       updated_attrs =
         Map.merge(attrs, %{
           result: "my test",
-          to_apply: [{:remove, "my ", pos}]
+          to_apply: [%PieceTable.Change{change: :del, text: "my ", position: 0}]
         })
 
       expected = {:ok, make_piece_table(updated_attrs)}
@@ -239,7 +249,7 @@ defmodule PieceTableTest do
       updated_attrs =
         Map.merge(attrs, %{
           result: "my test",
-          to_apply: [{:remove, "my ", pos}],
+          to_apply: [%PieceTable.Change{change: :del, text: "my ", position: 0}],
           applied: []
         })
 
@@ -265,7 +275,7 @@ defmodule PieceTableTest do
       updated_attrs =
         Map.merge(attrs, %{
           result: "my test",
-          to_apply: [{:remove, "my ", pos}]
+          to_apply: [%PieceTable.Change{change: :del, text: "my ", position: 0}]
         })
 
       expected = make_piece_table(updated_attrs)
@@ -290,7 +300,7 @@ defmodule PieceTableTest do
       updated_attrs =
         Map.merge(attrs, %{
           result: "test",
-          applied: [{:remove, "my ", pos}]
+          applied: [%PieceTable.Change{change: :del, text: "my ", position: 0}]
         })
 
       expected = {:ok, make_piece_table(updated_attrs)}
@@ -310,7 +320,7 @@ defmodule PieceTableTest do
       updated_attrs =
         Map.merge(attrs, %{
           result: "test",
-          applied: [{:remove, "my ", pos}]
+          applied: [%PieceTable.Change{change: :del, text: "my ", position: 0}]
         })
 
       expected = {:last, make_piece_table(updated_attrs)}
@@ -337,7 +347,7 @@ defmodule PieceTableTest do
       updated_attrs =
         Map.merge(attrs, %{
           result: "test",
-          applied: [{:remove, "my ", pos}]
+          applied: [%PieceTable.Change{change: :del, text: "my ", position: 0}]
         })
 
       expected = make_piece_table(updated_attrs)
