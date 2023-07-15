@@ -9,6 +9,9 @@ pieces, allowing efficient inserts, deletes, and modifications.
 This structure allows virtually infinite undo/redo, as long as we can keep the complete 
 list of changes.
 
+If a change is attempted when there unapplied changes (result of applying `PieceTable.redo` or `PieceTable.redo!`)
+it will return an error.
+
 ## Usage
 
 ```elixir

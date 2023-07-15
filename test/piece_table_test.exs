@@ -85,6 +85,18 @@ defmodule PieceTableTest do
       assert expected == PieceTable.insert(table, "other ", -1)
       assert expected == PieceTable.insert(table, "other ", nil)
     end
+
+    test "returns error if there are changes to apply" do
+      str = "my test"
+
+      table =
+        %{original: str, result: str}
+        |> make_piece_table()
+        |> PieceTable.insert!("super ", 3)
+        |> PieceTable.undo!()
+
+      assert {:error, "unapplied changes"} == PieceTable.insert(table, " will fail", 11)
+    end
   end
 
   describe "insert!/3" do
@@ -155,6 +167,18 @@ defmodule PieceTableTest do
 
       assert expected == PieceTable.delete(table, "other ", -1)
       assert expected == PieceTable.delete(table, "other ", nil)
+    end
+
+    test "returns error if there are changes to apply" do
+      str = "my test"
+
+      table =
+        %{original: str, result: str}
+        |> make_piece_table()
+        |> PieceTable.insert!("super ", 3)
+        |> PieceTable.undo!()
+
+      assert {:error, "unapplied changes"} == PieceTable.delete(table, 3, 1)
     end
   end
 

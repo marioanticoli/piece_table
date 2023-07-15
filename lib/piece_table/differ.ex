@@ -20,8 +20,6 @@ defmodule PieceTable.Differ do
 
   """
 
-  alias PieceTable.Change
-
   @type original_input :: PieceTable.t() | String.t()
 
   @doc """
@@ -53,11 +51,12 @@ defmodule PieceTable.Differ do
       {:error, "Wrong arguments"}
 
   """
-  @spec diff(original_input(), String.t()) :: {:ok, PieceTable.t()}
+  @spec diff(original_input(), String.t()) :: {:ok, PieceTable.t()} | {:error, String.t()}
   def diff(original, modified) when is_binary(original) and is_binary(modified),
     do: original |> PieceTable.new!() |> diff(modified)
 
-  def diff(%PieceTable{} = table, modified) when is_binary(modified) do
+  # matches if no unapplied changes
+  def diff(%PieceTable{to_apply: []} = table, modified) when is_binary(modified) do
     {table, _} =
       table.result
       |> String.myers_difference(modified)
@@ -66,10 +65,12 @@ defmodule PieceTable.Differ do
     {:ok, table}
   end
 
+  # matches if unapplied changes -> error
+  def diff(%PieceTable{}, modified) when is_binary(modified), do: {:error, "unapplied changes"}
   def diff(_, _), do: {:error, "Wrong arguments"}
 
   @doc """
-  Computes the difference between the original input and a modified string using the PieceTable data structure.
+  Generates changes between the original input and a modified string using the PieceTable data structure.
 
   ## Parameters
   - `original` (original_input()): The original input string.
@@ -99,15 +100,14 @@ defmodule PieceTable.Differ do
     do: {table, pos + String.length(text)}
 
   defp add_edit({:ins, text}, {table, pos}) do
-    change = Change.new!(:ins, text, pos)
-    table = PieceTable.update_piece_table(table, change)
+    {:ok, table} = PieceTable.insert(table, text, pos)
     pos = pos + String.length(text)
     {table, pos}
   end
 
   defp add_edit({:del, text}, {table, pos}) do
-    change = Change.new!(:del, text, pos)
-    table = PieceTable.update_piece_table(table, change)
+    length = String.length(text)
+    {:ok, table} = PieceTable.delete(table, pos, length)
     {table, pos}
   end
 
