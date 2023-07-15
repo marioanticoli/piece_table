@@ -103,16 +103,24 @@ defmodule PieceTable do
       iex> PieceTable.insert(table, ", before", 15)
       {:ok, %PieceTable{original: "Initial content", result: "Initial content, before", applied: [%PieceTable.Change{change: :ins, text: ", before", position: 15}]}}
   """
+  defguard is_valid_insert_input(text, position)
+           when is_binary(text) and is_integer(position) and position >= 0
+
   @spec insert(PieceTable.t(), String.t(), integer()) ::
           {:ok, PieceTable.t()} | {:error, String.t()}
   # do nothing on empty string
   def insert(%__MODULE__{} = table, "", _), do: {:ok, table}
 
-  def insert(%__MODULE__{} = table, text, position)
-      when is_binary(text) and is_integer(position) and position >= 0 do
+  # matches if no unapplied changes
+  def insert(%__MODULE__{to_apply: []} = table, text, position)
+      when is_valid_insert_input(text, position) do
     change = Change.new!(:ins, text, position)
     {:ok, update_piece_table(table, change)}
   end
+
+  # matches if unapplied changes -> error
+  def insert(%__MODULE__{}, text, position) when is_valid_insert_input(text, position),
+    do: {:error, "unapplied changes"}
 
   def insert(_, _, _), do: {:error, "invalid arguments"}
 
@@ -158,19 +166,27 @@ defmodule PieceTable do
       iex> PieceTable.delete(table, 4, 3)
       {:ok, %PieceTable{original: "Initial content", result: "Init content", applied: [%PieceTable.Change{change: :del, text: "ial", position: 4}]}}
   """
+  defguard is_valid_delete_input(position, length)
+           when is_integer(position) and position >= 0 and is_integer(length) and length > 0
+
   @spec delete(PieceTable.t(), integer(), integer()) ::
           {:ok, PieceTable.t()} | {:error, String.t()}
   # do nothing if deleting 0 chars
   def delete(%__MODULE__{} = table, _, 0), do: {:ok, table}
 
-  def delete(%__MODULE__{} = table, position, length)
-      when is_integer(position) and is_integer(length) and length > 0 do
+  # matches is no unapplied changes
+  def delete(%__MODULE__{to_apply: []} = table, position, length)
+      when is_valid_delete_input(position, length) do
     # To allow reverting a change I'm saving the string instead of the length, so a remove becomes an insert on undo.
     # length will be simply calculated from the length of the string
     text = String.slice(table.result, position, length)
     change = Change.new!(:del, text, position)
     {:ok, update_piece_table(table, change)}
   end
+
+  # matches if unapplied changes -> error
+  def delete(%__MODULE__{}, position, length) when is_valid_delete_input(position, length),
+    do: {:error, "unapplied changes"}
 
   def delete(_, _, _), do: {:error, "invalid arguments"}
 
@@ -366,8 +382,7 @@ defmodule PieceTable do
   defp raise_or_return({status, result}) when status in [:ok, :last, :first], do: result
   defp raise_or_return({:error, msg}), do: raise(ArgumentError, msg)
 
-  @spec update_piece_table(PieceTable.t(), PieceTable.Change.t()) :: PieceTable.t()
-  def update_piece_table(table, %Change{} = change) do
+  defp update_piece_table(table, %Change{} = change) do
     # get raw attributes
     attrs =
       Map.from_struct(table)

@@ -5,7 +5,7 @@ defmodule PieceTable.Change do
   ## Usage
 
   ```elixir
-  iex> table = PieceTable.Change.new!(:ins, "test", 3)
+  iex> PieceTable.Change.new!(:ins, "test", 3)
   %PieceTable.Change{change: :ins, position: 3, text: "test"}
   ```
 

@@ -41,6 +41,15 @@ defmodule PieceTable.DifferTest do
     test "fails with wrong args" do
       assert {:error, _} = Differ.diff("ciao", 1)
     end
+
+    test "returns error when unapplied changes" do
+      table =
+        PieceTable.new!("my test")
+        |> PieceTable.insert!("super ", 3)
+        |> PieceTable.undo!()
+
+      assert {:error, "unapplied changes"} == PieceTable.Differ.diff(table, "text")
+    end
   end
 
   describe "diff!/2" do
