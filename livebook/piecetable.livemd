@@ -1,0 +1,236 @@
+<!-- livebook:{"autosave_interval_s":60} -->
+
+# PieceTable demo
+
+```elixir
+Mix.install([
+  {:piece_table, "~> 0.1.3"}
+])
+
+import ExUnit.Assertions
+```
+
+## Premise
+
+### What is Elixir
+
+Elixir is a functional language (with immutable data) compatible with Erlang and that runs on its virtual machine. It is generally described as fault tolerant and highly concurrent.
+
+#### Conventions
+
+##### Bang
+
+In Elixir a common pattern is to have two version of the same function, one ending with `!` (called "bang") and another without.
+
+The difference between the two is that the former is expected to return the result or throw an error (raise in Elixir), while the latter will return a tuple, generally in the form `{:ok, my_result}` or `{:error, :something_went_wrong}`.
+
+<!-- livebook:{"force_markdown":true} -->
+
+```elixir
+user = Ecto.Repo.insert!(attrs)
+{:ok, user} = Ecto.Repo.insert(attrs)
+```
+
+##### Pattern matching
+
+Pattern matching is an important part of Elixir, it allows to define conditions against specific values in a very easy way and it can be applied both in a function signature or in conditional statements such as `with` and `case`.
+
+An example implementation of Fibonacci's number in Elixir and Javascript:
+
+<!-- livebook:{"force_markdown":true} -->
+
+```elixir
+def fibonacci!(n) when n < 0, do: raise "Invalid input. n must be a non-negative integer."
+def fibonacci!(0), do: 0
+def fibonacci!(1), do: 1
+def fibonacci!(n), do: fibonacci(n - 1) + fibonacci(n - 2)
+```
+
+*Note: recursion is a common and idiomatic way to solve problems in Elixir and the language is optimised to support it*
+
+##### No return
+
+Functions in Elixir always return the last value or `nil` if no value was defined
+
+## PieceTable library
+
+### Introduction
+
+The **PieceTable** library I developed is a **purely functional** Elixir implementation (no side effects) of the data structure theorised by **Crowley** (1998).
+
+It implements some optimisations based on Elixir characteristics.
+
+### Usage
+
+#### Create new PieceTable struct
+
+```elixir
+original_text = "this is the text"
+{:ok, table} = PieceTable.new(original_text)
+table2 = PieceTable.new!(original_text)
+
+assert table == table2
+
+table
+```
+
+The struct contains four fields, `:original` which is the initial text provided, `:result` which holds the text after all the changes, `:applied` and `:to_apply` which contain respectively the changes applied to the original text and those needed to be applied.
+
+*Note: for simplicity from now on I'll be using the functions with the bang*
+
+#### Insert new text
+
+```elixir
+table = PieceTable.insert!(table, " to which I can add", 16)
+```
+
+The first thing to notice here is that data being immutable, the function doesn't change the input, so we need to reassign `table1`; this is a characteristic of Elixir.
+
+Back to the library, we can see in the output that `:original` didn't change (and it never will), but `:result` now includes the text we wanted to insert, while `:applied` has now a new element.
+
+Let's try to add some more text:
+
+```elixir
+table = PieceTable.insert!(table, "original ", 12)
+```
+
+Text can be added in any valid position (0 to length of the string).  An interesting fact, in Elixir lists are implemented as linked list, to take advantage of this any new change (both inserts and deletes) are added in first position (at the head) with a complexity of O(1).
+
+##### Delete text
+
+```elixir
+table = PieceTable.delete!(table, 21, 5)
+```
+
+`:result` keeps getting update and the new change is again added at the head of `:applied`. An interesting thing to notice, the structure of the delete change mimics the one of insert, although its data is different from our input. For the purpose of just deleting the text is irrelevant, but later, at the time of undoing it will help us, because without it we would only know that at a certain position we lack some text of n characters.
+
+##### Undo
+
+If we had deleted something by mistake, we can now try undoing the edit:
+
+```elixir
+table = PieceTable.undo!(table)
+```
+
+With `undo!/1` (`/1` is called the arity of the function) we were able to revert the text to the previous state but, since we might want to redo our change, we don't just discard it, rather we pop it from `:applied` and prepend to `:to_apply` (same consideration on reverse list and efficiency are valid here).
+
+We can undo as many times as we want, if `:applied` is empty it will just keep returning the piece table it received.
+
+```elixir
+{:first, table} =
+  table |> PieceTable.undo!() |> PieceTable.undo!() |> PieceTable.undo!() |> PieceTable.undo()
+```
+
+We tried to undo the changes four times (although we only had two changes left) to show that although it detects it's already at the end, it doesn't error out and simply returns the piece table with all the changes undone (the pipe operator `|>`, sends the result of a function to the next).
+
+Let's now try see what happens if we tried to make a change when there are changes to apply:
+
+```elixir
+res = PieceTable.insert(table, "random", 0)
+
+assert {:error, "unapplied changes"} == res
+```
+
+If there are changes to apply the insert (and deletion) functions return an error.
+
+##### Redo
+
+Time to redo our changes:
+
+```elixir
+{:last, table} =
+  table |> PieceTable.redo!() |> PieceTable.redo!() |> PieceTable.redo!() |> PieceTable.redo()
+```
+
+We now reverted to the status before we did any undo and also in this case it detected we tried one time more than the changes we have but without errors.
+
+##### Get text
+
+Let's return the desired text:
+
+```elixir
+PieceTable.get_text(table)
+```
+
+### PieceTable.Differ
+
+This module only purpose is to calculate the changes between the current state of a piece table to arrive to a given string. It can also accept two strings, in which case it will create a new piece table struct.
+
+```elixir
+original_text = "this is a text"
+resulting_text = "this is a great test"
+diff = PieceTable.Differ.diff(original_text, resulting_text)
+```
+
+We can see that it generates all the changes necessary to arrive from `this is a text` to `this is a great test`.One interesting thing is to notice that an edit is actually represented as an insert and a delete with the same position and in sequence.
+
+<!-- livebook:{"force_markdown":true} -->
+
+```elixir
+...
+applied: [
+  ...
+  %PieceTable.Change{change: :ins, text: "s", position: 18},
+  %PieceTable.Change{change: :del, text: "x", position: 18},
+  ...
+],
+...
+```
+
+Underneath the function relies on Myer's Diff algorithm which gives the difference between two strings as such:
+
+```elixir
+String.myers_difference(original_text, resulting_text)
+```
+
+`PieceTable.Differ.diff!/2` creates a new piece table using the first string (that will be the original text), calculates Myer's Diff and pass the result to another function that will insert the appropriate change.
+
+The list of changes it receives can fall under three cases:
+
+`:eq` ignores the text and return the table with the update position
+
+<!-- livebook:{"force_markdown":true} -->
+
+```elixir
+  defp add_edit({:eq, text}, {table, pos}),
+    do: {table, pos + String.length(text)}
+```
+
+`:ins` inserts the text at the current position and then return the table with the updated position
+
+<!-- livebook:{"force_markdown":true} -->
+
+```elixir
+  defp add_edit({:ins, text}, {table, pos}) do
+    {:ok, table} = PieceTable.insert(table, text, pos)
+    pos = pos + String.length(text)
+    {table, pos}
+  end
+```
+
+`:del` deletes the text at the current position for as many characters as its length and returns the updated table and the position without update
+
+<!-- livebook:{"force_markdown":true} -->
+
+```elixir
+  defp add_edit({:del, text}, {table, pos}) do
+    length = String.length(text)
+    {:ok, table} = PieceTable.delete(table, pos, length)
+    {table, pos}
+  end
+
+```
+
+<!-- livebook:{"break_markdown":true} -->
+
+###
+
+## Conclusions
+
+I'm very satisfied with the result and I think this library is production ready.
+
+It's dependency free, it follows Elixir's conventions and I took particular care in documenting it properly and create unit tests for all cases.
+
+I'm also satisfied by the optimisation I added, expecially getting rid of the index and relying on two lists on which I can operate exclusively on the head.
+
+As for the other optimisation, keeping the result without having to calculate, it's a tradeoff of speed against memory, but with today's hardware I think it shouldn't constitute a big problem.
