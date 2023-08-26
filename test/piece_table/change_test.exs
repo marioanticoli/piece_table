@@ -35,7 +35,10 @@ defmodule PieceTable.ChangeTest do
   describe "invert/1" do
     test "works" do
       change = Change.new!(:ins, "ciao", 4, nil)
-      assert {:ok, %Change{change: :del, text: "ciao", position: 4, blame: nil}} = Change.invert(change)
+
+      assert {:ok, %Change{change: :del, text: "ciao", position: 4, blame: nil}} =
+               Change.invert(change)
+
       assert {:ok, ^change} = change |> Change.invert!() |> Change.invert()
     end
 
