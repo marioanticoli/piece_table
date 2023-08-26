@@ -11,7 +11,7 @@ defmodule PieceTableTest do
     end
 
     test "with anything else returns error" do
-      expected = {:error, "original text is not a string"}
+      expected = {:error, :wrong_type_original_text}
 
       assert expected == PieceTable.new(1)
       assert expected == PieceTable.new(nil)
@@ -64,7 +64,7 @@ defmodule PieceTableTest do
 
     test "returns error if table is not a PieceTable" do
       attrs = %{original: "my test"}
-      expected = {:error, "invalid arguments"}
+      expected = {:error, :invalid_arguments}
 
       assert expected == PieceTable.insert(attrs, "anything", 3)
     end
@@ -72,7 +72,7 @@ defmodule PieceTableTest do
     test "returns error if edit is not a string" do
       attrs = %{original: "my test"}
       table = make_piece_table(attrs)
-      expected = {:error, "invalid arguments"}
+      expected = {:error, :invalid_arguments}
 
       assert expected == PieceTable.insert(table, false, 3)
     end
@@ -80,7 +80,7 @@ defmodule PieceTableTest do
     test "returns error if position is not a positive integer" do
       attrs = %{original: "my test"}
       table = make_piece_table(attrs)
-      expected = {:error, "invalid arguments"}
+      expected = {:error, :invalid_arguments}
 
       assert expected == PieceTable.insert(table, "other ", -1)
       assert expected == PieceTable.insert(table, "other ", nil)
@@ -95,7 +95,7 @@ defmodule PieceTableTest do
         |> PieceTable.insert!("super ", 3)
         |> PieceTable.undo!()
 
-      assert {:error, "unapplied changes"} == PieceTable.insert(table, " will fail", 11)
+      assert {:error, :unapplied_changes} == PieceTable.insert(table, " will fail", 11)
     end
   end
 
@@ -155,7 +155,7 @@ defmodule PieceTableTest do
     test "returns error if edit is not a string" do
       attrs = %{original: "my test"}
       table = make_piece_table(attrs)
-      expected = {:error, "invalid arguments"}
+      expected = {:error, :invalid_arguments}
 
       assert expected == PieceTable.delete(table, false, 3)
     end
@@ -163,7 +163,7 @@ defmodule PieceTableTest do
     test "returns error if position is not a positive integer" do
       attrs = %{original: "my test"}
       table = make_piece_table(attrs)
-      expected = {:error, "invalid arguments"}
+      expected = {:error, :invalid_arguments}
 
       assert expected == PieceTable.delete(table, "other ", -1)
       assert expected == PieceTable.delete(table, "other ", nil)
@@ -178,7 +178,7 @@ defmodule PieceTableTest do
         |> PieceTable.insert!("super ", 3)
         |> PieceTable.undo!()
 
-      assert {:error, "unapplied changes"} == PieceTable.delete(table, 3, 1)
+      assert {:error, :unapplied_changes} == PieceTable.delete(table, 3, 1)
     end
   end
 
@@ -219,7 +219,7 @@ defmodule PieceTableTest do
     test "it returns an error when not a piece table" do
       str = "my test"
       not_a_table = %{original: str, result: str, applied: []}
-      expected = {:error, "not a PieceTable struct"}
+      expected = {:error, :not_a_piece_table}
 
       assert expected == PieceTable.get_text(not_a_table)
     end
@@ -283,7 +283,7 @@ defmodule PieceTableTest do
     end
 
     test "returns error if argument not a PieceTable" do
-      assert {:error, "not a PieceTable struct"} == PieceTable.undo(false)
+      assert {:error, :not_a_piece_table} == PieceTable.undo(false)
     end
   end
 
@@ -355,7 +355,7 @@ defmodule PieceTableTest do
     end
 
     test "returns error when argument not a struct" do
-      assert {:error, "not a PieceTable struct"} == PieceTable.redo(false)
+      assert {:error, :not_a_piece_table} == PieceTable.redo(false)
     end
   end
 

@@ -36,8 +36,8 @@ defmodule PieceTable.Change do
 
   ## Examples
 
-      iex> PieceTable.Change.new(:ins, "test", 4)
-      {:ok, %PieceTable.Change{change: :ins, text: "test", position: 4}}
+      iex> PieceTable.Change.new(:ins, "test", 4, nil)
+      {:ok, %PieceTable.Change{change: :ins, text: "test", position: 4, blame: nil}}
 
   """
   @spec new(atom(), String.t(), integer(), any()) ::
@@ -66,7 +66,7 @@ defmodule PieceTable.Change do
   ## Examples
 
       iex> PieceTable.Change.new!(:ins, "test", 4, nil)
-      %PieceTable.Change{change: :ins, text: "test", position: 4, nil}
+      %PieceTable.Change{change: :ins, text: "test", position: 4, blame: nil}
 
   """
   @spec new!(atom(), String.t(), integer(), any()) :: PieceTable.Change.t()
@@ -74,7 +74,7 @@ defmodule PieceTable.Change do
     do: new(change, text, position, blame) |> raise_or_return()
 
   # handle responses, raises if :error atom
-  defp raise_or_return({:error, args}), do: raise(ArgumentError, args)
+  defp raise_or_return({:error, args}), do: raise(ArgumentError, inspect(args))
   defp raise_or_return({:ok, result}), do: result
 
   @doc """
