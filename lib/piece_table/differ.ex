@@ -53,6 +53,7 @@ defmodule PieceTable.Differ do
   """
   @spec diff(original_input(), String.t(), any()) :: {:ok, PieceTable.t()} | {:error, String.t()}
   def diff(origin, modified, blame \\ nil)
+
   def diff(original, modified, blame) when is_binary(original) and is_binary(modified),
     do: original |> PieceTable.new!() |> diff(modified, blame)
 
@@ -95,7 +96,8 @@ defmodule PieceTable.Differ do
 
   """
   @spec diff!(String.t(), String.t(), any()) :: PieceTable.t()
-  def diff!(original, modified, blame \\ nil), do: diff(original, modified, blame) |> raise_or_return()
+  def diff!(original, modified, blame \\ nil),
+    do: diff(original, modified, blame) |> raise_or_return()
 
   defp add_edit({:eq, text}, {table, pos, blame}),
     do: {table, pos + String.length(text), blame}
