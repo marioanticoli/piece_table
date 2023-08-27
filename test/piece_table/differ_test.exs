@@ -50,6 +50,27 @@ defmodule PieceTable.DifferTest do
 
       assert {:error, "unapplied changes"} == PieceTable.Differ.diff(table, "text")
     end
+
+    test "retains previous blame" do
+      table =
+        PieceTable.new!("blame?")
+        |> PieceTable.insert!("!", 6, "bob")
+        |> PieceTable.delete!(5, 1, "alice")
+
+      assert {:ok,
+              %PieceTable{
+                original: "blame?",
+                result: "it blames!",
+                applied: [
+                  %PieceTable.Change{change: :ins, text: "s", position: 8, blame: "john"},
+                  %PieceTable.Change{change: :ins, text: "it ", position: 0, blame: "john"},
+                  %PieceTable.Change{change: :del, text: "?", position: 5, blame: "alice"},
+                  %PieceTable.Change{change: :ins, text: "!", position: 6, blame: "bob"}
+                ],
+                to_apply: []
+              }} ==
+               PieceTable.Differ.diff(table, "it blames!", "john")
+    end
   end
 
   describe "diff!/2" do

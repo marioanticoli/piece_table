@@ -51,23 +51,24 @@ defmodule PieceTable.Differ do
       {:error, "Wrong arguments"}
 
   """
-  @spec diff(original_input(), String.t()) :: {:ok, PieceTable.t()} | {:error, String.t()}
-  def diff(original, modified) when is_binary(original) and is_binary(modified),
-    do: original |> PieceTable.new!() |> diff(modified)
+  @spec diff(original_input(), String.t(), any()) :: {:ok, PieceTable.t()} | {:error, String.t()}
+  def diff(origin, modified, blame \\ nil)
+  def diff(original, modified, blame) when is_binary(original) and is_binary(modified),
+    do: original |> PieceTable.new!() |> diff(modified, blame)
 
   # matches if no unapplied changes
-  def diff(%PieceTable{to_apply: []} = table, modified) when is_binary(modified) do
-    {table, _} =
+  def diff(%PieceTable{to_apply: []} = table, modified, blame) when is_binary(modified) do
+    {table, _, _} =
       table.result
       |> String.myers_difference(modified)
-      |> Enum.reduce({table, 0}, &add_edit/2)
+      |> Enum.reduce({table, 0, blame}, &add_edit/2)
 
     {:ok, table}
   end
 
   # matches if unapplied changes -> error
-  def diff(%PieceTable{}, modified) when is_binary(modified), do: {:error, "unapplied changes"}
-  def diff(_, _), do: {:error, "Wrong arguments"}
+  def diff(%PieceTable{}, modified, _) when is_binary(modified), do: {:error, "unapplied changes"}
+  def diff(_, _, _), do: {:error, "Wrong arguments"}
 
   @doc """
   Generates changes between the original input and a modified string using the PieceTable data structure.
@@ -93,22 +94,22 @@ defmodule PieceTable.Differ do
       }
 
   """
-  @spec diff!(String.t(), String.t()) :: PieceTable.t()
-  def diff!(original, modified), do: diff(original, modified) |> raise_or_return()
+  @spec diff!(String.t(), String.t(), any()) :: PieceTable.t()
+  def diff!(original, modified, blame \\ nil), do: diff(original, modified, blame) |> raise_or_return()
 
-  defp add_edit({:eq, text}, {table, pos}),
-    do: {table, pos + String.length(text)}
+  defp add_edit({:eq, text}, {table, pos, blame}),
+    do: {table, pos + String.length(text), blame}
 
-  defp add_edit({:ins, text}, {table, pos}) do
-    {:ok, table} = PieceTable.insert(table, text, pos)
+  defp add_edit({:ins, text}, {table, pos, blame}) do
+    {:ok, table} = PieceTable.insert(table, text, pos, blame)
     pos = pos + String.length(text)
-    {table, pos}
+    {table, pos, blame}
   end
 
-  defp add_edit({:del, text}, {table, pos}) do
+  defp add_edit({:del, text}, {table, pos, blame}) do
     length = String.length(text)
-    {:ok, table} = PieceTable.delete(table, pos, length)
-    {table, pos}
+    {:ok, table} = PieceTable.delete(table, pos, length, blame)
+    {table, pos, blame}
   end
 
   # handle responses, raises if :error atom
